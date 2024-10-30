@@ -1,64 +1,95 @@
 const express = require("express");
 const serveStatic = require("serve-static");
+const sqlite3 = require("sqlite3").verbose();
 const bodyParser = require("body-parser");
 
 const app = express();
 app.use(bodyParser.json());
 app.use(serveStatic("public"));
 
-let todos = []; // In-memory storage for todos
+// MySQL Connection
+const db = new sqlite3.Database("./database.sqlite", (err) => {
+  if (err) {
+    console.error("Error opening SQLite database: " + err.message);
+    return;
+  }
+  console.log("Connected to SQLite database.");
+});
 
 // GET endpoint to fetch all todo items
 app.get("/todos", (req, res) => {
   const { status } = req.query;
-  let filteredTodos = todos;
+  let query = "SELECT * FROM todos";
+  let params = [];
 
   if (status === "active") {
-    filteredTodos = todos.filter((todo) => !todo.completed);
+    query += " WHERE completed = ?";
+    params.push(0); 
   } else if (status === "completed") {
-    filteredTodos = todos.filter((todo) => todo.completed);
+    query += " WHERE completed = ?";
+    params.push(1); 
   }
 
-  res.json(filteredTodos); 
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      console.error("Error fetching todos:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+    res.json(rows);
+  });
 });
+
 
 // POST endpoint to create a new todo item
 app.post("/todos", (req, res) => {
-  const todo = {
-    id: todos.length + 1,
-    title: req.body.title,
-    description: req.body.description || "",
-    date: req.body.date || "", 
-    completed: req.body.completed || false,
-  };
-  todos.push(todo);
-  res.status(201).json(todo); 
+  const { title, description, date, completed } = req.body;
+  const createdAt = new Date().toISOString(); 
+  const updatedAt = createdAt; 
+
+  db.run(
+    "INSERT INTO Todos (title, description, date, completed, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)",
+    [title, description || "", date || "", completed || false, createdAt, updatedAt],
+    function (err) {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      res.status(201).json({ id: this.lastID, title, description, date, completed });
+    }
+  );
 });
+
 
 // PUT endpoint to update an existing todo item with the specified `id`
 app.put("/todos/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-  const todo = todos.find((t) => t.id === id);
-  if (!todo) {
-    return res.status(404).json({ error: "Todo not found" });
-  }
+  const { title, description, date, completed } = req.body;
+  const { id } = req.params;
+  const updatedAt = new Date().toISOString(); // Генерація timestamp для оновлення
 
-  todo.title = req.body.title || todo.title;
-  todo.description = req.body.description || todo.description;
-  todo.date = req.body.date || todo.date; 
-  todo.completed = req.body.completed !== undefined ? req.body.completed : todo.completed;
-  res.json(todo); 
+  db.run(
+    "UPDATE Todos SET title = ?, description = ?, date = ?, completed = ?, updatedAt = ? WHERE id = ?",
+    [title, description, date, completed, updatedAt, id],
+    function (err) {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      res.json({ message: "Todo updated successfully" });
+    }
+  );
 });
+
 
 // DELETE endpoint to remove an existing todo item with the specified `id`
 app.delete("/todos/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-  const index = todos.findIndex((t) => t.id === id);
-  if (index === -1) {
-    return res.status(404).json({ error: "Todo not found" });
-  }
-  todos.splice(index, 1);
-  res.status(204).send();
+  const { id } = req.params;
+  db.run("DELETE FROM todos WHERE id = ?", [id], function (err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.status(204).send();
+  });
 });
 
 // run the server on port 3000

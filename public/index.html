@@ -9,9 +9,11 @@
 <body>
 
 <section class="bg-white">
-  <div class="w-full mx-auto 2xl:max-w-7xl flex flex-col justify-center relative p-8">
-      <h1 class="text-2xl font-semibold text-center text-gray-700 mb-6">Todo App</h1>
+  <div class="w-full mx-auto 2xl:max-w-7xl flex flex-col md:flex-row justify-between relative p-8 space-y-8 md:space-y-0">
 
+    <!-- Форма для заповнення даних -->
+    <div class="md:w-1/4 w-full">
+      <h1 class="text-2xl font-semibold text-center text-gray-700 mb-6">Todo App</h1>
       <form id="todo-form" class="flex flex-col space-y-4">
         <input 
           type="text" 
@@ -37,7 +39,10 @@
           Add Task
         </button>
       </form>
-    <div>
+    </div>
+
+    <!-- Форма для виводу завдань -->
+    <div class="md:w-3/4 w-full mt-4 ml-4 md:mt-0 lg:ml-4"> <!-- Додано mt-4 для верхнього відступу -->
       <div class="flex gap-4 mb-4">
         <button onclick="changeTab('all')" id="all-tab" class="rounded-full px-6 h-10 py-2 text-sm font-medium bg-orange-50 text-orange-600">
           All
@@ -56,6 +61,10 @@
         </section>
       </div>
     </div>
+
   </div>
 </section>
+
 <script src="script.js"></script>
+</body>
+</html>
